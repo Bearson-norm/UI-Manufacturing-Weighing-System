@@ -177,7 +177,7 @@ const SKUTab: React.FC = () => {
             size="sm"
             variant="danger"
             onClick={() => handleDelete(record)}
-            loading={deleteMutation.isLoading}
+            isLoading={deleteMutation.isLoading}
             leftIcon={<Trash2 className="w-4 h-4" />}
           >
             Hapus
@@ -216,7 +216,7 @@ const SKUTab: React.FC = () => {
       <Table
         columns={columns}
         data={skuList}
-        loading={isLoading}
+        isLoading={isLoading}
         emptyText="Belum ada SKU"
       />
 
@@ -263,7 +263,7 @@ const SKUTab: React.FC = () => {
           <div className="flex gap-3 pt-4">
             <Button
               type="submit"
-              loading={createMutation.isLoading || updateMutation.isLoading}
+              isLoading={createMutation.isLoading || updateMutation.isLoading}
               className="flex-1"
             >
               {editingSKU ? 'Update' : 'Simpan'}

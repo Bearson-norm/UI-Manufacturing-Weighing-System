@@ -193,7 +193,7 @@ const ScaleTab: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button
               onClick={() => handleQuickConnect('simulation')}
-              loading={isConnecting}
+              isLoading={isConnecting}
               variant="outline"
               className="h-20 flex-col gap-2"
               leftIcon={<Monitor className="w-6 h-6" />}
@@ -204,7 +204,7 @@ const ScaleTab: React.FC = () => {
 
             <Button
               onClick={() => handleQuickConnect('serial')}
-              loading={isConnecting}
+              isLoading={isConnecting}
               variant="outline"
               className="h-20 flex-col gap-2"
               leftIcon={<Usb className="w-6 h-6" />}
@@ -218,7 +218,7 @@ const ScaleTab: React.FC = () => {
 
             <Button
               onClick={() => handleQuickConnect('tcp')}
-              loading={isConnecting}
+              isLoading={isConnecting}
               variant="outline"
               className="h-20 flex-col gap-2"
               leftIcon={<Wifi className="w-6 h-6" />}
@@ -244,7 +244,7 @@ const ScaleTab: React.FC = () => {
                 <Button
                   key={index}
                   onClick={command.action}
-                  loading={command.loading}
+                  isLoading={command.loading}
                   disabled={!isConnected && command.name !== 'Test Connection'}
                   variant="outline"
                   className="h-20 flex-col gap-2"
@@ -271,7 +271,7 @@ const ScaleTab: React.FC = () => {
           <Table
             columns={serialPortColumns}
             data={serialPorts}
-            loading={portsLoading}
+            isLoading={portsLoading}
             emptyText="No serial ports detected"
           />
         </div>

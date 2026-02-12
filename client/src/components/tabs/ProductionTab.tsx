@@ -187,7 +187,7 @@ const ProductionTab: React.FC = () => {
                 {activeMO.mo_status === 'Draft' && (
                   <Button
                     onClick={handleStartProduction}
-                    loading={startProductionMutation.isLoading}
+                    isLoading={startProductionMutation.isLoading}
                     className="w-full"
                     leftIcon={<PlayCircle className="w-5 h-5" />}
                   >
@@ -198,7 +198,7 @@ const ProductionTab: React.FC = () => {
                 {activeMO.mo_status === 'In Progress' && (
                   <Button
                     onClick={handleCompleteProduction}
-                    loading={completeProductionMutation.isLoading}
+                    isLoading={completeProductionMutation.isLoading}
                     variant="success"
                     className="w-full"
                     leftIcon={<CheckCircle className="w-5 h-5" />}

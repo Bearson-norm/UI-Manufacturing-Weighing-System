@@ -125,7 +125,7 @@ const DigitalScale: React.FC<DigitalScaleProps> = ({
               <Button
                 onClick={handleTare}
                 disabled={!isConnected || isTaring}
-                loading={isTaring}
+                isLoading={isTaring}
                 variant="outline"
                 size="sm"
                 leftIcon={<RotateCcw className="w-4 h-4" />}
@@ -135,7 +135,7 @@ const DigitalScale: React.FC<DigitalScaleProps> = ({
               <Button
                 onClick={handleZero}
                 disabled={!isConnected || isZeroing}
-                loading={isZeroing}
+                isLoading={isZeroing}
                 variant="outline"
                 size="sm"
                 leftIcon={<Zap className="w-4 h-4" />}

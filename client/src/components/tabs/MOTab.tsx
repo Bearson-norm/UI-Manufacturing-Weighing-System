@@ -208,7 +208,7 @@ const MOTab: React.FC = () => {
                 size="sm"
                 variant="success"
                 onClick={() => handleStart(record)}
-                loading={startMutation.isLoading}
+                isLoading={startMutation.isLoading}
                 leftIcon={<PlayCircle className="w-4 h-4" />}
               >
                 Start
@@ -224,7 +224,7 @@ const MOTab: React.FC = () => {
                 size="sm"
                 variant="danger"
                 onClick={() => handleDelete(record)}
-                loading={deleteMutation.isLoading}
+                isLoading={deleteMutation.isLoading}
                 leftIcon={<Trash2 className="w-4 h-4" />}
               >
                 Hapus
@@ -236,7 +236,7 @@ const MOTab: React.FC = () => {
               size="sm"
               variant="success"
               onClick={() => handleComplete(record)}
-              loading={completeMutation.isLoading}
+              isLoading={completeMutation.isLoading}
               leftIcon={<CheckCircle className="w-4 h-4" />}
             >
               Complete
@@ -275,7 +275,7 @@ const MOTab: React.FC = () => {
       <Table
         columns={columns}
         data={moList}
-        loading={isLoading}
+        isLoading={isLoading}
         emptyText="Belum ada Manufacturing Order"
       />
 
@@ -318,7 +318,7 @@ const MOTab: React.FC = () => {
           <div className="flex gap-3 pt-4">
             <Button
               type="submit"
-              loading={createMutation.isLoading}
+              isLoading={createMutation.isLoading}
               className="flex-1"
             >
               {editingMO ? 'Update' : 'Simpan'}
