@@ -96,7 +96,7 @@ cd ..
 #### Create PostgreSQL Database
 
 ```sql
-CREATE DATABASE manufacturing_db;
+CREATE DATABASE kmi_manufacturing_db;
 ```
 
 #### Set up Environment Variables
@@ -113,12 +113,12 @@ Update the `.env` file with your database credentials:
 # Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=manufacturing_db
+DB_NAME=kmi_manufacturing_db
 DB_USER=your_username
 DB_PASSWORD=your_password
 
 # Server Configuration
-PORT=5000
+PORT=6657
 NODE_ENV=development
 
 # JWT Configuration
@@ -126,7 +126,7 @@ JWT_SECRET=your_super_secret_jwt_key_here
 JWT_EXPIRES_IN=24h
 
 # CORS Configuration
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=https://kmi-mows.moof-set.web.id
 ```
 
 #### Run Database Migration
@@ -150,8 +150,9 @@ npm run dev
 ```
 
 This will start:
-- Backend API on `http://localhost:5000`
+- Backend API on `http://localhost:6657`
 - Frontend React app on `http://localhost:3000`
+- Production domain: `https://kmi-mows.moof-set.web.id`
 
 #### Production Mode
 

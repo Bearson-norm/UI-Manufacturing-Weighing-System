@@ -8,12 +8,18 @@ on:
 
 env:
   NODE_VERSION: '18.x'
-  DB_HOST: localhost
-  DB_PORT: 5432
-  DB_NAME: manufacturing_db
-  DB_USER: postgres
-  DB_PASSWORD: postgres
+  # PostgreSQL Database Configuration
+  DB_HOST: ${{ secrets.DB_HOST || 'localhost' }}
+  DB_PORT: ${{ secrets.DB_PORT || '5432' }}
+  DB_NAME: ${{ secrets.DB_NAME || 'kmi_manufacturing_db' }}
+  DB_USER: ${{ secrets.DB_USER || 'admin' }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'admin123' }}
   NODE_ENV: production
+  # VPS Deployment Configuration
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+  VPS_USER: ${{ secrets.VPS_USER || 'root' }}
+  VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+  VPS_DEPLOY_PATH: ${{ secrets.VPS_DEPLOY_PATH || '/var/www/manufacturing-dashboard' }}
 
 jobs:
   deploy:
@@ -27,6 +33,7 @@ jobs:
           POSTGRES_DB: ${{ env.DB_NAME }}
           POSTGRES_USER: ${{ env.DB_USER }}
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+          TZ: Asia/Bangkok
         ports:
           - 5432:5432
         options: >-
@@ -106,9 +113,9 @@ jobs:
           echo "DB_USER=${{ env.DB_USER }}" >> $GITHUB_ENV
           echo "DB_PASSWORD=${{ env.DB_PASSWORD }}" >> $GITHUB_ENV
           echo "NODE_ENV=${{ env.NODE_ENV }}" >> $GITHUB_ENV
-          echo "PORT=5000" >> $GITHUB_ENV
+          echo "PORT=6657" >> $GITHUB_ENV
           echo "JWT_SECRET=github_actions_secret_key" >> $GITHUB_ENV
-          echo "CORS_ORIGIN=http://localhost:3000" >> $GITHUB_ENV
+          echo "CORS_ORIGIN=https://kmi-mows.moof-set.web.id" >> $GITHUB_ENV
 
       - name: Run PostgreSQL database migration
         run: |
@@ -192,7 +199,7 @@ jobs:
         working-directory: ./client
         run: npm run build
         env:
-          REACT_APP_API_URL: http://localhost:5000/api
+          REACT_APP_API_URL: http://localhost:6657/api
           NODE_ENV: production
 
       - name: Start server and test health endpoint
@@ -206,7 +213,7 @@ jobs:
           sleep 10
           
           # Test health endpoint
-          curl -f http://localhost:5000/health || exit 1
+          curl -f http://localhost:6657/health || exit 1
           echo "✅ Health check passed"
           
           # Stop server
@@ -218,9 +225,108 @@ jobs:
           DB_USER: ${{ env.DB_USER }}
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
           NODE_ENV: ${{ env.NODE_ENV }}
-          PORT: 5000
+          PORT: 6657
           JWT_SECRET: github_actions_secret_key
-          CORS_ORIGIN: http://localhost:3000
+          CORS_ORIGIN: https://kmi-mows.moof-set.web.id
+
+      - name: Deploy to VPS
+        if: env.VPS_HOST != ''
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          port: ${{ env.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "."
+          target: ${{ env.VPS_DEPLOY_PATH }}
+          strip_components: 0
+          exclude: |
+            node_modules
+            client/node_modules
+            .git
+            .github
+            *.log
+            .env
+            .env.local
+
+      - name: Setup and restart on VPS
+        if: env.VPS_HOST != ''
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.VPS_HOST }}
+          username: ${{ env.VPS_USER }}
+          port: ${{ env.VPS_PORT }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ${{ env.VPS_DEPLOY_PATH }}
+            
+            # Setup timezone
+            export TZ=Asia/Bangkok
+            sudo timedatectl set-timezone Asia/Bangkok || true
+            
+            # Setup environment file
+            cat > .env << EOF
+            TZ=Asia/Bangkok
+            DB_HOST=${{ env.DB_HOST }}
+            DB_PORT=${{ env.DB_PORT }}
+            DB_NAME=${{ env.DB_NAME }}
+            DB_USER=${{ env.DB_USER }}
+            DB_PASSWORD=${{ env.DB_PASSWORD }}
+            NODE_ENV=production
+            PORT=6657
+            JWT_SECRET=${{ secrets.JWT_SECRET || 'your_super_secret_jwt_key_here' }}
+            CORS_ORIGIN=${{ secrets.CORS_ORIGIN || 'https://kmi-mows.moof-set.web.id' }}
+            EOF
+            
+            # Install dependencies if needed
+            if [ ! -d "node_modules" ]; then
+              echo "Installing root dependencies..."
+              npm ci --production
+            fi
+            
+            if [ ! -d "client/node_modules" ]; then
+              echo "Installing client dependencies..."
+              cd client
+              npm ci --production
+              cd ..
+            fi
+            
+            # Run database migration
+            echo "Running database migration..."
+            npm run db:migrate || echo "Migration skipped or already done"
+            
+            # Build frontend if needed
+            if [ ! -d "client/build" ]; then
+              echo "Building frontend..."
+              cd client
+              npm run build
+              cd ..
+            fi
+            
+            # Setup Nginx configuration
+            if command -v nginx &> /dev/null; then
+              echo "Setting up Nginx configuration..."
+              sudo cp nginx/kmi-mows.moof-set.web.id.conf /etc/nginx/sites-available/kmi-mows.moof-set.web.id.conf
+              sudo ln -sf /etc/nginx/sites-available/kmi-mows.moof-set.web.id.conf /etc/nginx/sites-enabled/
+              
+              # Remove default nginx site if exists
+              sudo rm -f /etc/nginx/sites-enabled/default
+              
+              # Test nginx configuration
+              sudo nginx -t && sudo systemctl reload nginx || echo "Nginx configuration test failed"
+            else
+              echo "Nginx not found. Please install and configure manually."
+            fi
+            
+            # Restart application using PM2 (if installed)
+            if command -v pm2 &> /dev/null; then
+              echo "Restarting application with PM2..."
+              pm2 restart manufacturing-dashboard || pm2 start server/index.js --name manufacturing-dashboard --update-env
+            else
+              echo "PM2 not found. Please restart application manually."
+            fi
+            
+            echo "✅ Deployment completed on VPS!"
 
       - name: Deployment summary
         run: |
@@ -229,8 +335,12 @@ jobs:
           echo "### ✅ Deployment Status" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: KMI-Production" >> $GITHUB_STEP_SUMMARY
           echo "- **Database**: PostgreSQL 15 Alpine (migrated)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database User**: ${{ env.DB_USER }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend**: Built successfully" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend**: Health check passed" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ env.VPS_HOST }}" ]; then
+            echo "- **VPS Deployment**: Completed" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Configuration" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
@@ -238,3 +348,10 @@ jobs:
           echo "- **Database Type**: PostgreSQL" >> $GITHUB_STEP_SUMMARY
           echo "- **Database**: ${{ env.DB_NAME }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Database User**: ${{ env.DB_USER }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ env.VPS_HOST }}" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🖥️ VPS Configuration" >> $GITHUB_STEP_SUMMARY
+            echo "- **VPS Host**: ${{ env.VPS_HOST }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **VPS User**: ${{ env.VPS_USER }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Deploy Path**: ${{ env.VPS_DEPLOY_PATH }}" >> $GITHUB_STEP_SUMMARY
+          fi

@@ -17,7 +17,7 @@ const consumptionRoutes = require('./routes/consumption');
 const scaleRoutes = require('./routes/scale');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 6657;
 
 // Security middleware
 app.use(helmet());

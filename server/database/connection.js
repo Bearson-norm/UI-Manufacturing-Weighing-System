@@ -5,7 +5,7 @@ require('dotenv').config();
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'manufacturing_db',
+  database: process.env.DB_NAME || 'kmi_manufacturing_db',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
   max: 20, // Maximum number of clients in the pool

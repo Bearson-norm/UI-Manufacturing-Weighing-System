@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create database (run this separately)
--- CREATE DATABASE manufacturing_db;
+-- CREATE DATABASE kmi_manufacturing_db;
 
 -- UoM (Unit of Measure) table
 CREATE TABLE IF NOT EXISTS uom (
