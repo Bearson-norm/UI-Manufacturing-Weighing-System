@@ -38,11 +38,21 @@ const Table = <T extends Record<string, any>>({
     return record[rowKey as keyof T] || index;
   };
 
-  const getValue = (record: T, key: string | keyof T) => {
+  const getValue = (record: T, key: string | keyof T): any => {
     if (typeof key === 'string' && key.includes('.')) {
       return key.split('.').reduce((obj, k) => obj?.[k], record);
     }
     return record[key as keyof T];
+  };
+
+  const renderCellValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return String(value);
   };
 
   if (loading) {
@@ -119,7 +129,7 @@ const Table = <T extends Record<string, any>>({
                     >
                       {column.render
                         ? column.render(getValue(record, column.key), record, index)
-                        : getValue(record, column.key)}
+                        : renderCellValue(getValue(record, column.key))}
                     </td>
                   ))}
                 </tr>
