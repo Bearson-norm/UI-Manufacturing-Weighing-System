@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: manufacturing_db
+    environment:
+      POSTGRES_DB: manufacturing_db
+      POSTGRES_USER: manufacturing_user
+      POSTGRES_PASSWORD: manufacturing_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./server/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - manufacturing_network
+
+  # Backend API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: manufacturing_api
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=manufacturing_db
+      - DB_USER=manufacturing_user
+      - DB_PASSWORD=manufacturing_password
+      - PORT=5000
+      - JWT_SECRET=your_super_secret_jwt_key_here
+      - CORS_ORIGIN=http://localhost:3000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+    networks:
+      - manufacturing_network
+    restart: unless-stopped
+
+  # Frontend React App
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: manufacturing_frontend
+    environment:
+      - REACT_APP_API_URL=http://localhost:5000/api
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - manufacturing_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  manufacturing_network:
+    driver: bridge
+
+

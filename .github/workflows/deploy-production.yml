@@ -1,0 +1,240 @@
+name: Deploy Production Dashboard
+
+on:
+  push:
+    branches:
+      - KMI-Production
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  NODE_VERSION: '18.x'
+  DB_HOST: localhost
+  DB_PORT: 5432
+  DB_NAME: manufacturing_db
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  NODE_ENV: production
+
+jobs:
+  deploy:
+    name: Deploy Dashboard to Production
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: ${{ env.DB_NAME }}
+          POSTGRES_USER: ${{ env.DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: KMI-Production
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "⏳ Waiting for PostgreSQL database to be ready..."
+          node -e "
+          const { Pool } = require('pg');
+          const pool = new Pool({
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD,
+            database: 'postgres', // Connect to default PostgreSQL database first
+            connectionTimeoutMillis: 5000
+          });
+          let retries = 30;
+          const checkConnection = async () => {
+            try {
+              const result = await pool.query('SELECT version()');
+              const pgVersion = result.rows[0].version;
+              console.log('✅ PostgreSQL is ready!');
+              console.log('📊 PostgreSQL Version:', pgVersion.split(',')[0]);
+              await pool.end();
+              process.exit(0);
+            } catch (err) {
+              retries--;
+              if (retries <= 0) {
+                console.error('❌ PostgreSQL connection failed after 30 retries');
+                console.error('Error:', err.message);
+                process.exit(1);
+              }
+              console.log('Waiting for PostgreSQL to be ready... (' + retries + ' retries left)');
+              setTimeout(checkConnection, 2000);
+            }
+          };
+          checkConnection();
+          "
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+
+      - name: Setup environment variables
+        run: |
+          echo "DB_HOST=${{ env.DB_HOST }}" >> $GITHUB_ENV
+          echo "DB_PORT=${{ env.DB_PORT }}" >> $GITHUB_ENV
+          echo "DB_NAME=${{ env.DB_NAME }}" >> $GITHUB_ENV
+          echo "DB_USER=${{ env.DB_USER }}" >> $GITHUB_ENV
+          echo "DB_PASSWORD=${{ env.DB_PASSWORD }}" >> $GITHUB_ENV
+          echo "NODE_ENV=${{ env.NODE_ENV }}" >> $GITHUB_ENV
+          echo "PORT=5000" >> $GITHUB_ENV
+          echo "JWT_SECRET=github_actions_secret_key" >> $GITHUB_ENV
+          echo "CORS_ORIGIN=http://localhost:3000" >> $GITHUB_ENV
+
+      - name: Run PostgreSQL database migration
+        run: |
+          echo "🔄 Running PostgreSQL database migration..."
+          npm run db:migrate
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+
+      - name: Verify PostgreSQL database connection
+        run: |
+          echo "🔍 Verifying PostgreSQL database connection..."
+          node -e "
+          const { Pool } = require('pg');
+          const pool = new Pool({
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            database: process.env.DB_NAME,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD
+          });
+          pool.query('SELECT NOW(), current_database(), version()', (err, res) => {
+            if (err) {
+              console.error('❌ PostgreSQL connection failed:', err.message);
+              process.exit(1);
+            }
+            console.log('✅ PostgreSQL connection successful!');
+            console.log('📅 Current time:', res.rows[0].now);
+            console.log('📊 Database name:', res.rows[0].current_database);
+            console.log('🔧 PostgreSQL version:', res.rows[0].version.split(',')[0]);
+            pool.end();
+            process.exit(0);
+          });
+          "
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+
+      - name: Verify PostgreSQL database schema
+        run: |
+          echo "🔍 Verifying PostgreSQL database schema..."
+          node -e "
+          const { Pool } = require('pg');
+          const pool = new Pool({
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            database: process.env.DB_NAME,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASSWORD
+          });
+          pool.query(\"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name\", (err, res) => {
+            if (err) {
+              console.error('❌ PostgreSQL schema verification failed:', err.message);
+              process.exit(1);
+            }
+            console.log('✅ PostgreSQL database tables created:');
+            if (res.rows.length === 0) {
+              console.log('⚠️  No tables found in database');
+            } else {
+              res.rows.forEach(row => console.log('  ✓', row.table_name));
+            }
+            console.log('📊 Total tables:', res.rows.length);
+            pool.end();
+            process.exit(0);
+          });
+          "
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+
+      - name: Build frontend
+        working-directory: ./client
+        run: npm run build
+        env:
+          REACT_APP_API_URL: http://localhost:5000/api
+          NODE_ENV: production
+
+      - name: Start server and test health endpoint
+        run: |
+          # Start server in background
+          npm start &
+          SERVER_PID=$!
+          
+          # Wait for server to start
+          echo "Waiting for server to start..."
+          sleep 10
+          
+          # Test health endpoint
+          curl -f http://localhost:5000/health || exit 1
+          echo "✅ Health check passed"
+          
+          # Stop server
+          kill $SERVER_PID || true
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+          NODE_ENV: ${{ env.NODE_ENV }}
+          PORT: 5000
+          JWT_SECRET: github_actions_secret_key
+          CORS_ORIGIN: http://localhost:3000
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: KMI-Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database**: PostgreSQL 15 Alpine (migrated)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend**: Built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: Health check passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: Production" >> $GITHUB_STEP_SUMMARY
+          echo "- **Node Version**: ${{ env.NODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database Type**: PostgreSQL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database**: ${{ env.DB_NAME }}@${{ env.DB_HOST }}:${{ env.DB_PORT }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database User**: ${{ env.DB_USER }}" >> $GITHUB_STEP_SUMMARY
