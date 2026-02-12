@@ -9,11 +9,13 @@ on:
 env:
   NODE_VERSION: '18.x'
   # PostgreSQL Database Configuration
+  # Note: For GitHub Actions service container, use 'postgres' as default user
+  # For VPS/production, use 'admin' user
   DB_HOST: ${{ secrets.DB_HOST || 'localhost' }}
   DB_PORT: ${{ secrets.DB_PORT || '5432' }}
   DB_NAME: ${{ secrets.DB_NAME || 'kmi_manufacturing_db' }}
-  DB_USER: ${{ secrets.DB_USER || 'admin' }}
-  DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'admin123' }}
+  DB_USER: ${{ secrets.DB_USER || 'postgres' }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD || 'postgres' }}
   NODE_ENV: production
   # VPS Deployment Configuration
   VPS_HOST: ${{ secrets.VPS_HOST }}

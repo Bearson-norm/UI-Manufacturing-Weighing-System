@@ -18,8 +18,12 @@ Tambahkan secrets berikut di GitHub repository:
 - `DB_HOST` - Database host (default: localhost)
 - `DB_PORT` - Database port (default: 5432)
 - `DB_NAME` - Database name (default: kmi_manufacturing_db)
-- `DB_USER` - Database user (default: admin)
-- `DB_PASSWORD` - Database password (default: admin123)
+- `DB_USER` - Database user (default: admin untuk VPS, postgres untuk GitHub Actions)
+- `DB_PASSWORD` - Database password (default: admin123 untuk VPS, postgres untuk GitHub Actions)
+
+**Catatan**: 
+- Untuk **GitHub Actions CI/CD**: Default user adalah `postgres` karena menggunakan PostgreSQL service container
+- Untuk **VPS/Production**: Default user adalah `admin` sesuai dengan setup database di VPS
 
 ### VPS Secrets (Wajib untuk deployment)
 - `VPS_HOST` - IP address atau domain VPS (contoh: 192.168.1.100 atau example.com)
