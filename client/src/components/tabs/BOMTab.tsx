@@ -238,7 +238,7 @@ const BOMTab: React.FC = () => {
           <Table
             columns={columns}
             data={bomList}
-            isLoading={isLoading}
+            loading={isLoading}
             emptyText="Belum ada bahan baku untuk produk ini"
           />
         </>

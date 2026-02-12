@@ -135,7 +135,7 @@ const MonitorTab: React.FC = () => {
       <Table
         columns={columns}
         data={moList}
-        isLoading={isLoading}
+        loading={isLoading}
         emptyText="Belum ada Manufacturing Order"
       />
     </div>

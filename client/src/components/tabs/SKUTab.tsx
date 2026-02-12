@@ -216,7 +216,7 @@ const SKUTab: React.FC = () => {
       <Table
         columns={columns}
         data={skuList}
-        isLoading={isLoading}
+        loading={isLoading}
         emptyText="Belum ada SKU"
       />
 

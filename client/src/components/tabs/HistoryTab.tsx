@@ -47,7 +47,7 @@ const HistoryTab: React.FC = () => {
       <Table
         columns={columns}
         data={consumptionList}
-        isLoading={isLoading}
+        loading={isLoading}
         emptyText="Belum ada data konsumsi"
       />
     </div>
