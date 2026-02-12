@@ -271,7 +271,7 @@ const ScaleTab: React.FC = () => {
           <Table
             columns={serialPortColumns}
             data={serialPorts}
-            isLoading={portsLoading}
+            loading={portsLoading}
             emptyText="No serial ports detected"
           />
         </div>
